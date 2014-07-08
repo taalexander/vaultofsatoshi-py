@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import time
 import hmac
 import hashlib
@@ -7,10 +9,11 @@ from BeautifulSoup import BeautifulSoup
 import requests
 import json
 import datetime
+from .config import config as config
 
-base_url = "https://api.vaultofsatoshi.com"
-api_key = "TODO"
-api_secret = "TODO"
+base_url = config['url']
+api_key = config['api_key']
+api_secret = config['api_secret']
 
 def microsecond_to_timestamp(microseconds):
     milliseconds = microseconds / 1000 / 1000
