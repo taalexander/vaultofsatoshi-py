@@ -27,7 +27,7 @@ class AsyncDataUpdater(Account):
 
 
     def start(self):
-        self.currencies = build_currencies_from_list(self.get_currency()['data'])
+        self.currencies = build_currencies_from_list(self.get_currency())
         self.update()
 
 

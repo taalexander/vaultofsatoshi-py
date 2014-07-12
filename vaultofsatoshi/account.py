@@ -12,8 +12,8 @@ from concurrent import futures
 from BeautifulSoup import BeautifulSoup
 from .config import config as config
 from .util import to_iso_datetime
-from .currency import Currency 
-
+from .currency import Currency,build_currencies_from_list
+from .orders import *
 base_url = config['url']
 api_key = config['api_key']
 api_secret = config['api_secret']
@@ -50,7 +50,7 @@ class Account(object):
 
         try:
             response = requests.post(full_url, data=http_data, headers={'Api-Key': self.api_key, 'Api-Sign': sig_base64})
-            return json.loads(response.text)
+            return json.loads(response.text)['data']
         except requests.exceptions.ConnectionError:
             print "Caught ConnectionError for url: " + full_url
             return None
@@ -63,7 +63,7 @@ class Account(object):
         if code:
             params = {'code': code}
         result = self._request(params, '/info/currency')
-        return result
+        return build_currencies_from_list(result)
 
     def get_account(self,):
         return self._request(None, '/info/account')
@@ -104,14 +104,15 @@ class Account(object):
         return self._request(data, "/info/quote")
 
     def get_orderbook(self,order_currency, payment_currency, group_orders, count):
-        return self._request({"order_currency": order_currency, "payment_currency": payment_currency, "group_orders": group_orders, "count": count}, "/info/orderbook")
+        return build_orderbook_from_dict(self._request({"order_currency": order_currency, "payment_currency": payment_currency,\
+         "group_orders": group_orders, "count": count}, "/info/orderbook"))
 
     def get_orderbooks(self,currency_pairs,group_orders=True,count=20,thread_pool_max_workers=10):
         fut_orderbooks = {}
         for pair in currency_pairs:
             if pair[0].code not in orderbooks:
                 orderbooks[pair[0].code] = {} 
-        orderbooks = Orderbooks(fut_orderbooks.keys())
+        orderbooks = CurrenciesOrderbooks(fut_orderbooks.keys())
         with futures.ThreadPoolExecutor(thread_pool_max_workers) as ex: 
             for pair in currency_pairs:
                 fut_orderbooks[pair[0].code][pair[0].code] = ex.submit(self.get_orderbook,pair[0],pair[1],True,20) 
