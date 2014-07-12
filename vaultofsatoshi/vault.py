@@ -5,10 +5,11 @@ import hmac
 import hashlib
 import base64
 import urllib2
-from BeautifulSoup import BeautifulSoup
 import requests
 import json
 import datetime
+from concurrent import futures
+from BeautifulSoup import BeautifulSoup
 from .config import config as config
 from .util import to_iso_datetime
 from .currency import Currency 
@@ -104,6 +105,24 @@ class Account(object):
 
     def get_orderbook(self,order_currency, payment_currency, group_orders, count):
         return self._request({"order_currency": order_currency, "payment_currency": payment_currency, "group_orders": group_orders, "count": count}, "/info/orderbook")
+
+    def get_orderbooks(self,currency_pairs,group_orders=True,count=20,thread_pool_max_workers=10):
+        fut_orderbooks = {}
+        for pair in currency_pairs:
+            if pair[0].code not in orderbooks:
+                orderbooks[pair[0].code] = {} 
+        orderbooks = Orderbooks(fut_orderbooks.keys())
+        with futures.ThreadPoolExecutor(thread_pool_max_workers) as ex: 
+            for pair in currency_pairs:
+                fut_orderbooks[pair[0].code][pair[0].code] = ex.submit(self.get_orderbook,pair[0],pair[1],True,20) 
+
+            for order_code,fd in fut_orderbooks.iteritems():
+                for purchase_code,fut in fd.iteritems():
+                    if fut.exception():
+                        raise fut.exception()
+                    else:
+                        orderbooks[order_code][purchase_code] = fut.result()
+        return orderbooks
 
     def get_orders(self,count, after=None, open_only=False):
         data = {"count": count}

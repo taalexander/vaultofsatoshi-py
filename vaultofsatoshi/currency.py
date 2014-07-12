@@ -20,11 +20,11 @@ class Currency(object):
     
 
 def build_currency_from_dict(d):
-    code = d['code']
-    name = d['name']
+    code = d.get('code','')
+    name = d.get('name','')
     precision = d['precision']
-    tradeable = bool(d['tradeable'])
-    virtual = bool(d['virtual'])
+    tradeable = bool(d.get('tradeable',True))
+    virtual = bool(d.get('virtual',True))
     value = d.get('value',0)
     return Currency(code,name,precision,value,virtual,tradeable)
 

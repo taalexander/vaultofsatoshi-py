@@ -44,8 +44,9 @@ class AsyncDataUpdater(Account):
             now = datetime.now()                
             got_orderbook = False
             if self.orderbook is None or \
-            (now-self.orderbook_time).total_seconds >= 4.5:                    
-                submitted['orderbook'] = self.get_orderbook()
+            (now-self.orderbook_time).total_seconds >= 4.5:
+
+                submitted['orderbook'] = ex.submit(self.get_orderbooks)
                 got_orderbook = True
                 self.orderbook_time = datetime.now()
 
