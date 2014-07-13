@@ -54,3 +54,4 @@ target/
 
 #configuration files
 configuration.py
+config.py

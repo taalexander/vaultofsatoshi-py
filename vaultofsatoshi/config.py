@@ -3,5 +3,5 @@
 config = {}
 
 config['url'] = 'https://api.vaultofsatoshi.com'
-config['api_key'] = 'af25415b1dcbacf703ae87ac1bbfea366e58f780a9b2d6f5c75e35d70b2f9d7f'
-config['api_secret'] = '316d15028622838d31dada6d9ce020bf99eb730ce3dad0367180967b6c67b084'
+config['api_key'] = '5e74950e77c2d557ac77ba06490b86c94b2998592e85727c7b0438c692c563f8'
+config['api_secret'] = 'dbf950697405362df4a5a859242efec339fadf59182f767ddeb8ffa21de7ac64'
