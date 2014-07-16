@@ -18,6 +18,10 @@ base_url = config['url']
 api_key = config['api_key']
 api_secret = config['api_secret']
 
+class RequestError(Exception):
+    pass
+      
+        
 
 class Account(object):
     
@@ -48,12 +52,13 @@ class Account(object):
         sig_base64 = base64.b64encode(hmac.new(self.api_secret, hash_this, digestmod=hashlib.sha512).hexdigest())
         full_url = self.base_url + resource_url
 
-        try:
-            response = requests.post(full_url, data=http_data, headers={'Api-Key': self.api_key, 'Api-Sign': sig_base64})
-            return json.loads(response.text)['data']
-        except requests.exceptions.ConnectionError:
-            print "Caught ConnectionError for url: " + full_url
-            return None
+        
+        response = requests.post(full_url, data=http_data, headers={'Api-Key': self.api_key, 'Api-Sign': sig_base64})
+        res = json.loads(response.text)
+        if res['status'] == 'error':
+            raise RequestError(res['message'])            
+        return res['data']     
+        
 
     def get_currency(self,code=None):
         """
@@ -103,28 +108,65 @@ class Account(object):
         data.update(payment_units.to_data("price"))
         return self._request(data, "/info/quote")
 
-    def get_orderbook(self,order_currency, payment_currency, group_orders, count):
-        return build_orderbook_from_dict(self._request({"order_currency": order_currency, "payment_currency": payment_currency,\
-         "group_orders": group_orders, "count": count}, "/info/orderbook"))
+    def get_orderbook(self,order_currency, payment_currency, group_orders, count): 
+        res = self._request({"order_currency": order_currency, "payment_currency": payment_currency,\
+         "group_orders": group_orders, "count": count}, "/info/orderbook")
+        if res  is None:
+            import pdb
+            pdb.set_trace()
+        return build_orderbook_from_dict(res)
 
-    def get_orderbooks(self,currency_pairs,group_orders=True,count=20,thread_pool_max_workers=10):
+    def get_orderbooks(self,currency_pairs,group_orders=True,count=20,thread_pool_max_workers=10,delay=0.1):
+        """
+        Bound to cause errors, as VOS enforces nonced api calls, meaning parrallel requests 
+        do not work. Wish I had read the api docs a little more bedfore writing this 
+        function. but by adding a slight delay to the request calls become sequential enought to 
+        arrive in order but still speeds up function. There is probably a better way to do this that I 
+        will look into, with locks
+        """
         fut_orderbooks = {}
+        orderbooks = {}        
         for pair in currency_pairs:
             if pair[0].code not in orderbooks:
                 orderbooks[pair[0].code] = {} 
-        orderbooks = CurrenciesOrderbooks(fut_orderbooks.keys())
+                fut_orderbooks[pair[0].code] = {} 
+        
         with futures.ThreadPoolExecutor(thread_pool_max_workers) as ex: 
             for pair in currency_pairs:
-                fut_orderbooks[pair[0].code][pair[0].code] = ex.submit(self.get_orderbook,pair[0],pair[1],True,20) 
-
+                fut_orderbooks[pair[0].code][pair[1].code] = ex.submit(self.get_orderbook,pair[0].code,pair[1].code,True,20) 
+                #sleep to allow first request at lease enough time to get to server
+                time.sleep(0.1)
             for order_code,fd in fut_orderbooks.iteritems():
                 for purchase_code,fut in fd.iteritems():
                     if fut.exception():
-                        raise fut.exception()
-                    else:
-                        orderbooks[order_code][purchase_code] = fut.result()
-        return orderbooks
 
+                        print(fut.exception)
+                        return self.get_orderbooks(currency_pairs,group_orders,count,thread_pool_max_workers)
+                    else:
+
+                        orderbooks[order_code][purchase_code] = fut.result()
+
+        currorderbooks = CurrenciesOrderbooks()
+        for k,v in orderbooks.iteritems():
+            currorderbooks[k] = v
+        return currorderbooks
+    def get_orderbooks_single(self,currency_pairs,group_orders=True,count=20,thread_pool_max_workers=10):
+        fut_orderbooks = {}
+        orderbooks = {}        
+        for pair in currency_pairs:
+            if pair[0].code not in orderbooks:
+                orderbooks[pair[0].code] = {} 
+                fut_orderbooks[pair[0].code] = {} 
+        
+        
+        for pair in currency_pairs:
+            orderbooks[pair[0].code][pair[1].code] = self.get_orderbook(pair[0].code,pair[1].code,True,20) 
+                
+
+        currorderbooks = CurrenciesOrderbooks()
+        for k,v in orderbooks.iteritems():
+            currorderbooks[k] = v
+        return currorderbooks
     def get_orders(self,count, after=None, open_only=False):
         data = {"count": count}
         if after:

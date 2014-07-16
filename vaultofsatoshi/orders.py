@@ -35,12 +35,11 @@ class CurrenciesOrderbooks(dict):
     def __setitem__(self, key, value):
          # TODO: what should happen to the order if
         #       the key is already in the dict  
-        if not isinstance(value,Orderbook)and isinstance(value,dict):          
-       
-           value = build_orderbook_from_dict(value)
-        else:
-           raise Exception('is not currency object or dict')
-        
+        if not isinstance(value,dict):      
+            raise TypeError('is not currency object or dict')
+        for x in value.itervalues():
+            if not isinstance(x,Orderbook):
+                raise TypeError('value is not orderbook')
         super(CurrenciesOrderbooks,self).__setitem__(key, value)     
 
 

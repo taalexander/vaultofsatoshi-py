@@ -31,7 +31,7 @@ def build_currency_from_dict(d):
 
 
 class Currencies(dict):
-    def __init__(self, *args, **kw):
+    def __init__(self,*args, **kw):
         super(Currencies,self).__init__(*args, **kw)        
     
     def __setitem__(self, key, value):
@@ -47,14 +47,13 @@ class Currencies(dict):
     
     
     def generate_orderbook_combinations(self):
-        combos = {}
-        for k in self:
-            l = []
-            curr_val = self[k]
+        combos = []
+        for k in self.itervalues():
+                   
             for v in self.itervalues():
-                if self[k] is not v:
-                    l.append((curr_val,v))
-            combos[k] = l 
+                if k is not v and not v.virtual:
+                    combos.append((k,v))          
+        
         return combos
 
 
